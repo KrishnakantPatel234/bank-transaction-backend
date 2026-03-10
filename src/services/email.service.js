@@ -128,7 +128,6 @@ async function sendRegistrationEmail(userEmail , name){
         </div>
 
     </div>
-
     </div>
     `;
 
