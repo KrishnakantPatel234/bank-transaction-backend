@@ -13,6 +13,6 @@ router.post("/" , authMiddleware , createTransaction);
  * - POST /api/transactions/system/initial-funds
  * - Create initial funds transaction from system user
  */
-router.post("/system/initial-funds" , authSystemUserMiddleware , createInitialFundsTransaction)
+router.post("/system/initial-funds" , authSystemUserMiddleware , createInitialFundsTransaction);
 
 export default router;
