@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authMiddleware } from "../middlewares/auth.middlewares.js";
-import { createAccount } from "../controllers/account.controllers.js";
+import { createAccount, getAllAccounts } from "../controllers/account.controllers.js";
 
 const router = Router();
 
@@ -9,7 +9,8 @@ const router = Router();
  * - Create a new account
  * - Protected Route
  */
-router.post("/" , authMiddleware , createAccount);
+router.get("/" , authMiddleware , getAllAccounts);
+router.post("/create" , authMiddleware , createAccount);
 
 
 export default router;
