@@ -1,6 +1,7 @@
 import User from "../models/user.models.js";
 import jwt from "jsonwebtoken";
 import { sendRegistrationEmail } from "../services/email.service.js";
+import tokenBlackList from "../models/blackList.models.js";
 
 //Js doc comment (on hover it tells what is this function does wherever it is imported)
 /**
@@ -88,7 +89,33 @@ const loginUser = async (req , res) => {
         })
 }
 
+/**
+ * - user logout controller
+ * - POST /api/auth/logout
+ */
+const logoutUser = async (req , res) => {
+    const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
+
+    if(!token){
+        return res.status(200).json({
+            message : "User logged out successfully"
+        })
+    }
+
+    res.clearCookie("token");
+
+    await tokenBlackList.create({
+        token : token
+    })
+
+    return res.status(200).json({
+        message : "User logged out successfully"
+    })
+
+}
+
 export {
     registerUser,
-    loginUser
+    loginUser,
+    logoutUser
 }
