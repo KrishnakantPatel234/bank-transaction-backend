@@ -93,37 +93,67 @@ async function createTransaction(req , res){
         })
     }
 
-    /**
-     * 5. Create transaction (PENDING)
-     */
-    const session = await mongoose.startSession();
-    session.createTransaction();
+    let transaction;
 
-    const transaction = await Transaction.create({
-        fromAccount,
-        toAccount,
-        amount,
-        idempotencyKey,
-        status : "PENDING"
-    } , {session});
+    try{
+        /**
+         * 5. Create transaction (PENDING)
+         */
+        const session = await mongoose.startSession();
+        session.startTransaction();
 
-    const debitLedgerEntry = await Ledger.create({
-        account : toAccount,
-        amount : amount,
-        transaction : transaction._id,
-        type : "CREDIT"
-    } , {session});
+        transaction = new Transaction({
+            fromAccount,
+            toAccount,
+            amount,
+            idempotencyKey,
+            status: "PENDING"
+        });
 
-    transaction.status = "COMPLETED";
-    await transaction.save({session});
+        await transaction.save({ session });
 
-    await session.commitTransaction()
-    session.endSession();
+        const debitLedgerEntry = await Ledger.create([{
+            account : fromAccount,
+            amount : amount,
+            transaction : transaction._id,
+            type : "DEBIT"
+        }] , {session});
+
+        await (() => {
+            return new Promise((resolve) => setTimeout(resolve , 15 * 1000));
+        })()
+
+        const creditLedgerEntry = await Ledger.create([{
+            account : toAccount,
+            amount : amount,
+            transaction : transaction._id,
+            type : "CREDIT"
+        }] , {session});
+
+        await Transaction.findByIdAndUpdate(
+            transaction._id,
+            { status: "COMPLETED" },
+            { session }
+        );
+
+        await session.commitTransaction()
+        session.endSession();
+    }
+    catch(error){
+        return res.status(400).json({
+            message : "Transaction is pending due to some issue, please retry after some time"
+        })
+    }
 
     /**
      * 10. Send Email notification
      */
     await sendTransactionEmail(req.user.email , req.user.name , amount , toAccount);
+
+    return res.status(201).json({
+        message : "Transaction completed successfully",
+        transaction : transaction
+    })
 }
 
 async function createInitialFundsTransaction(req , res){
@@ -166,14 +196,14 @@ async function createInitialFundsTransaction(req , res){
     });
 
     const debitLedgerEntry = await Ledger.create([{
-        account : toUserAccount._id,
+        account : fromUserAccount._id,
         amount , 
         transaction : transaction._id,
         type : "DEBIT"
     }], { session });
 
     const creditLedgerEntry = await Ledger.create([{
-        account : toAccount,
+        account : toUserAccount._id,
         amount ,
         transaction : transaction._id,
         type : "CREDIT"
